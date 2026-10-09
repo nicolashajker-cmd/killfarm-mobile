@@ -1,0 +1,36 @@
+name: Construire l'APK
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dezipper le projet
+        run: |
+          Z=$(ls *.zip | head -1)
+          unzip -o "$Z" -x ".github/*"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.7"
+      - name: Compiler
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Renommer
+        run: cp app/build/outputs/apk/debug/app-debug.apk KillFarm.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KillFarm-apk
+          path: KillFarm.apk
+      - name: Publier l'APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" KillFarm.apk --title "KillFarm Mobile (version ${{ github.run_number }})" --notes "Telecharge KillFarm.apk et ouvre-le pour l'installer." --latest
